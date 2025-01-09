@@ -14,9 +14,9 @@ import (
 
 type Snowflake struct {
 	mu            sync.Mutex
-	lastTimestamp int64
-	nodeId        int64
-	sequence      int64
+	lastTimestamp int64 // 41 bits
+	nodeId        int64 // 10 bits
+	sequence      int64 // 12 bits
 }
 
 func NewSlowflake(nodeId int64) *Snowflake {
@@ -39,6 +39,10 @@ func (s *Snowflake) NextId() string {
 
 	timestamp := time.Now().UnixMilli()
 
+	if timestamp < s.lastTimestamp {
+		timestamp = s.waitForNextMillis()
+	}
+
 	if timestamp == s.lastTimestamp {
 		s.sequence = (s.sequence + 1) & 4095
 		if s.sequence == 0 {
@@ -50,7 +54,7 @@ func (s *Snowflake) NextId() string {
 
 	s.lastTimestamp = timestamp
 
-	return strconv.FormatInt(s.lastTimestamp<<22|s.nodeId<<12|s.sequence, 2)
+	return strconv.FormatInt(s.lastTimestamp<<22|s.nodeId<<12|s.sequence, 10)
 }
 
 func main() {
